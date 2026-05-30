@@ -1,0 +1,32 @@
+name: Destroy EC2
+
+on:
+  workflow_dispatch:  # Te permite activarlo manualmente desde la pestaña Actions
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Destroy CloudFormation Stack
+        run: |
+          echo "Iniciando la eliminación del stack ec2-stack-clase..."
+          
+          # Comando para ordenar a AWS que elimine el stack
+          aws cloudformation delete-stack --stack-name ec2-stack-clase
+          
+          echo "Esperando a que todos los recursos sean eliminados con éxito..."
+          # Este comando bloquea el pipeline hasta que todo esté borrado, así ves el resultado real en GitHub
+          aws cloudformation wait stack-delete-complete --stack-name ec2-stack-clase
+          
+          echo "¡Estructura destruida correctamente!"

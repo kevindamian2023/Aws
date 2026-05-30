@@ -1,14 +1,45 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: EC2 creada desde GitHub Actions
+Description: EC2 creada desde GitHub Actions con Security Group HTTP y User Data
 
 Resources:
 
+  # 1. Grupo de Seguridad para permitir tráfico HTTP (Puerto 80)
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Permitir trafico entrante por el puerto 80 HTTP
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0  # Permite el acceso desde cualquier dirección IP
+
+  # 2. Tu instancia EC2 actualizada
   MyEC2:
     Type: AWS::EC2::Instance
     Properties:
       AvailabilityZone: us-east-1a
       ImageId: ami-0cca150d127c2216f
       InstanceType: t3.micro
+      
+      # Vinculamos el grupo de seguridad que creamos arriba
+      SecurityGroups:
+        - Ref: WebSecurityGroup
+
+      # Añadimos la User Data para automatizar tareas al iniciar la instancia
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Actualizar repositorios e instalar el servidor web Apache
+          dnf update -y
+          dnf install -y httpd
+          
+          # Iniciar y habilitar Apache para que corra automáticamente
+          systemctl start httpd
+          systemctl enable httpd
+          
+          # Crear un archivo index.html básico de prueba
+          echo "<h1>Despliegue Exitoso desde GitHub Actions</h1><p>La instancia EC2 y el Grupo de Seguridad HTTP estan funcionando correctamente.</p>" > /var/www/html/index.html
 
       Tags:
         - Key: Name
@@ -18,3 +49,8 @@ Outputs:
 
   InstanceId:
     Value: !Ref MyEC2
+
+  # Output adicional para obtener la IP pública fácilmente desde la consola
+  PublicIP:
+    Description: IP publica de la instancia para probar en el navegador
+    Value: !GetAtt MyEC2.PublicIp
